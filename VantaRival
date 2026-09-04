@@ -1,8 +1,20 @@
---[[
-    Bypass :shush:
-]]
+-- LPH_NO_VIRTUALIZE 대체 (없으면 그냥 함수 반환)
+local function safeVirtualize(func)
+    if type(LPH_NO_VIRTUALIZE) == "function" then
+        return LPH_NO_VIRTUALIZE(func)
+    else
+        return func
+    end
+end
 
-pcall(LPH_NO_VIRTUALIZE(function()
+-- cloneref 대체 (없으면 원본 반환)
+local cloneref = cloneref or function(obj) return obj end
+
+-- =====================================================================
+-- AethSec 안티치트 우회 (수정 버전)
+-- =====================================================================
+
+pcall(safeVirtualize(function()
     local bypassed = false
 
     local kKickNames = {
@@ -16,7 +28,7 @@ pcall(LPH_NO_VIRTUALIZE(function()
     }
 
     local kSlotMap = {
-        [69]  = 2,
+        [69] = 2,
         [138] = 3,
         [207] = 4,
         [276] = 5,
@@ -52,6 +64,7 @@ pcall(LPH_NO_VIRTUALIZE(function()
     local samples = 0
     local hidden_fn = {}
     local max_stack_depth = 128
+
     if not setstackhidden then
         local function ValidTraceback(s)
             local dotPos = string.find(s, "%.")
@@ -306,7 +319,7 @@ pcall(LPH_NO_VIRTUALIZE(function()
 
         local ok, _ = pcall(function()
             TrustFunction(detour)
-                    
+                   
             if hookfn == hookmetamethod then
                 original_func = hookfn(inst, metamethod, detour)
             else
@@ -553,7 +566,7 @@ pcall(LPH_NO_VIRTUALIZE(function()
             task.defer(function()
                 local since_last = tick() - (last or 0)
                 local desired_wait = expected_interval - since_last
-                
+               
                 if desired_wait > 0 then
                     task.wait(desired_wait)
                 end
@@ -562,7 +575,7 @@ pcall(LPH_NO_VIRTUALIZE(function()
                 remote:Destroy()
             end)
         end)
-            
+           
         bypassed = true
         monitor_conn:Disconnect()
     end)
@@ -570,7 +583,7 @@ pcall(LPH_NO_VIRTUALIZE(function()
     for _, name in ipairs(kKickNames) do
         local func = LocalPlayer[name]
         if type(func) ~= "function" then return end
-            
+           
         local oldfunc; oldfunc = SafeHook(hookfunction, func, function(self, ...)
             if self == LocalPlayer and not checkcaller() then
                 return nil
@@ -595,7 +608,14 @@ pcall(LPH_NO_VIRTUALIZE(function()
         task.wait(0.5)
     end
     task.wait(1)
-pcall(function()
-    loadstring(game:HttpGet("https://raw.githubusercontent.com/VantaScript-official/VantaEnhancements/refs/heads/main/VantaRivals"))()
-end)
+
+    -- =====================================================================
+    -- VantaRivals 로더 (AC 우회 완료 후 실행)
+    -- =====================================================================
+    local success, err = pcall(function()
+        loadstring(game:HttpGet("https://raw.githubusercontent.com/VantaScript-official/VantaEnhancements/refs/heads/main/VantaRivals"))()
+    end)
+    if not success then
+        warn("[Vanta] 로드 실패: " .. tostring(err))
+    end
 end))
