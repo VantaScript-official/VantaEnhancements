@@ -1,7 +1,15 @@
 local Players = game:GetService("Players")
 local lp = Players.LocalPlayer
 
--- (1) AC 함수 사전 캡처 및 무력화 (getgc 후킹 전에 먼저)
+-- 1. 킥(Kick) 함수 차단 (필수)
+local oldKick = lp.Kick
+hookfunction(oldKick, newcclosure(function(self, ...)
+    if self == lp then return end
+    return oldKick(self, ...)
+end))
+
+-- 2. AC 메인 루프만 무력화 (getgc 후킹 없이, 직접 함수를 찾아서 슬립)
+-- getgc를 그대로 두어 Vanta가 자유롭게 함수를 찾을 수 있도록 함
 local acTargets = {}
 for _, v in getgc() do
     if typeof(v) == "function" then
@@ -17,57 +25,20 @@ for _, v in acTargets do
     end))
 end
 
--- (2) getgc 후킹 (AC 함수 은닉)
-local oldGetGC = getgc
-getgc = newcclosure(function(...)
-    local gc = oldGetGC(...)
-    local filtered = {}
-    for _, v in ipairs(gc) do
-        if typeof(v) == "function" then
-            local src = debug.info(v, "s")
-            if not (src and (src:find("LocalScript3") or src:find("MiscellaneousController") or src:find("AnalyticsPipelineController"))) then
-                table.insert(filtered, v)
-            end
-        else
-            table.insert(filtered, v)
-        end
-    end
-    return filtered
-end)
-
--- (3) 메타테이블 파괴 (GC 약한 참조 탐지 우회)
-local mtHook
-mtHook = hookfunction(getrenv().setmetatable, newcclosure(function(t, mt)
-    if mt and type(mt) == "table" and rawget(mt, "__mode") then
-        local trace = debug.traceback()
-        if trace:find("MiscellaneousController") or trace:find("CameraSecurity") or trace:find("LocalScript3") then
-            return mtHook({1, 2, 3}, {})
-        end
-    end
-    return mtHook(t, mt)
-end))
-
--- (4) 킥(Kick) 차단
-local oldKick = lp.Kick
-hookfunction(oldKick, newcclosure(function(self, ...)
-    if self == lp then return end
-    return oldKick(self, ...)
-end))
-
--- (5) print/warn 무력화 (error는 건드리지 않음)
+-- 3. print/warn 무력화 (선택, 로그 정리용)
 local oldPrint = print
 local oldWarn = warn
 print = function() end
 warn = function() end
 
 -- =====================================================================
--- 2. VantaRivals 로더 실행 (안티치트 우회 적용된 상태)
+-- VantaRivals 로더 실행 (레이지봇 정상 작동)
 -- =====================================================================
 
 pcall(function()
     loadstring(game:HttpGet("https://raw.githubusercontent.com/VantaScript-official/VantaEnhancements/refs/heads/main/VantaRivals"))()
 end)
 
--- (선택) 필요 시 print/warn 복구
+-- (필요 시 복구)
 -- print = oldPrint
 -- warn = oldWarn
